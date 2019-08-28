@@ -21,17 +21,34 @@ ESP8266HTTPUpdateServer httpUpdater;
 #define LED_COUNT 12
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_RGBW + NEO_KHZ800);
 
+//Tapping
+#define TAP_IN 0
+bool _wasTapped = false;
+
+void ICACHE_RAM_ATTR handleTap() { 
+  _wasTapped = true;
+}
+
+//colors
+uint32_t yellow = strip.Color(255, 255, 0, 0);
+uint32_t red =    strip.Color(0, 255, 0, 0);
+uint32_t green =  strip.Color(255, 0, 0, 0);
+uint32_t blue =   strip.Color(0, 0, 255, 0);
+uint32_t cyan =   strip.Color(255, 0, 255, 0);
+
 void setup() 
 {
   WiFiManager wifiManager;
 
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(TAP_IN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(TAP_IN), handleTap, FALLING);
 
   Serial.begin(115200);
 
   strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
   strip.setBrightness(10); // Set BRIGHTNESS (max = 255)
-  strip.fill(strip.Color(255, 255, 0, 0)); //set yellow
+  strip.fill(yellow); //set yellow
   strip.show();
 
   //first parameter is name of access point, second is the password
@@ -44,25 +61,36 @@ void setup()
 
   MDNS.addService("http", "tcp", 80);
   Serial.printf("HTTPUpdateServer ready! Open http://%s.local/update in your browser\n", host);
+
+  strip.fill(cyan);
+  strip.show();
 }
 
 void loop() 
 {
-  strip.clear();
-  strip.show();
   httpServer.handleClient();
   MDNS.update();
 
-  //green, red, blue, white?
-  //colorWipe(strip.Color(255,   0,   0), 50); // Red
-  colorWipe(strip.Color(255,   0,   255,  0), 100);
-  delay(250);
-  colorWipe(strip.Color(0,   0,   0,  0), 100);
-  delay(250);
+  if (_wasTapped)
+  {
+    flashRandom(50, 6, cyan);
+    strip.fill(cyan);
+    strip.show();
+    _wasTapped = false;
+  }
   
-  //colorWipe(strip.Color(  0, 255,   0), 50); // Green
+  //green, red, blue, white?
+  //colorWipe(strip.Color(255,   0,   0), 50); // green
+  //colorWipe(strip.Color(255,   0,   255,  0), 100); //cyan
+  //delay(250);
+  //colorWipe(strip.Color(0,   0,   0,  0), 100);
+  //delay(250);
+  
+  //colorWipe(strip.Color(  0, 255,   0), 50); // Red
   //colorWipe(strip.Color(  0,   0, 255), 50); // Blue
 }
+
+
 
 void flashLED(int times, int ts)
 {
@@ -85,5 +113,15 @@ void colorWipe(uint32_t color, int wait) {
     strip.setPixelColor(i, color);         //  Set pixel's color (in RAM)
     strip.show();                          //  Update strip to match
     delay(wait);                           //  Pause for a moment
+  }
+}
+
+void flashRandom(int wait, uint8_t count, uint32_t color) {
+  for(uint8_t i=0; i<count; i++) {
+    // get a random pixel from the list
+    uint8_t j = random(strip.numPixels());
+    strip.setPixelColor(j, 0); //turn it off
+    strip.show();
+    delay(wait);
   }
 }
