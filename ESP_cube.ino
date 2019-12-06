@@ -19,6 +19,7 @@ ESP8266HTTPUpdateServer httpUpdater;
 //neopixels
 #define LED_PIN    2
 #define LED_COUNT 12
+#define BRIGHTNESS 10
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_RGBW + NEO_KHZ800);
 
 //Tapping
@@ -47,7 +48,7 @@ void setup()
   Serial.begin(115200);
 
   strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
-  strip.setBrightness(10); // Set BRIGHTNESS (max = 255)
+  strip.setBrightness(BRIGHTNESS); // Set BRIGHTNESS (max = 255)
   strip.fill(yellow); //set yellow
   strip.show();
 
@@ -62,7 +63,7 @@ void setup()
   MDNS.addService("http", "tcp", 80);
   Serial.printf("HTTPUpdateServer ready! Open http://%s.local/update in your browser\n", host);
 
-  strip.fill(cyan);
+  strip.fill(red);
   strip.show();
 }
 
@@ -73,9 +74,9 @@ void loop()
 
   if (_wasTapped)
   {
-    flashRandom(50, 6, cyan);
-    strip.fill(cyan);
-    strip.show();
+    flashRandom(150, 6);
+    //strip.fill(cyan);
+    //strip.show();
     _wasTapped = false;
   }
   
@@ -116,12 +117,17 @@ void colorWipe(uint32_t color, int wait) {
   }
 }
 
-void flashRandom(int wait, uint8_t count, uint32_t color) {
+void flashRandom(int wait, uint8_t count) {
+  //randomly change the brightness of the strip
   for(uint8_t i=0; i<count; i++) {
     // get a random pixel from the list
-    uint8_t j = random(strip.numPixels());
-    strip.setPixelColor(j, 0); //turn it off
+    //uint8_t j = random(strip.numPixels());
+    uint8_t j = random(BRIGHTNESS * 2);
+    strip.setBrightness(j);
+    //strip.setPixelColor(j, 0); //turn it off
     strip.show();
     delay(wait);
   }
+  strip.setBrightness(BRIGHTNESS);
+  strip.show();
 }
