@@ -18,9 +18,9 @@ ESP8266HTTPUpdateServer httpUpdater;
 
 //neopixels
 #define LED_PIN    2
-#define LED_COUNT 12
+#define LED_COUNT 4
 #define BRIGHTNESS 10
-Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_RGBW + NEO_KHZ800);
+Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_RGB + NEO_KHZ800);
 
 //Tapping
 #define TAP_IN 0
@@ -31,11 +31,11 @@ void ICACHE_RAM_ATTR handleTap() {
 }
 
 //colors
-uint32_t yellow = strip.Color(255, 255, 0, 0);
-uint32_t red =    strip.Color(0, 255, 0, 0);
-uint32_t green =  strip.Color(255, 0, 0, 0);
-uint32_t blue =   strip.Color(0, 0, 255, 0);
-uint32_t cyan =   strip.Color(255, 0, 255, 0);
+uint32_t yellow = strip.Color(255, 255, 0);
+uint32_t red =    strip.Color(0, 255, 0);
+uint32_t green =  strip.Color(255, 0, 0);
+uint32_t blue =   strip.Color(0, 0, 255);
+uint32_t cyan =   strip.Color(255, 0, 255);
 
 void setup() 
 {
