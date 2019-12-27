@@ -32,10 +32,11 @@ void ICACHE_RAM_ATTR handleTap() {
 
 //colors
 uint32_t yellow = strip.Color(255, 255, 0);
-uint32_t red =    strip.Color(0, 255, 0);
-uint32_t green =  strip.Color(255, 0, 0);
-uint32_t blue =   strip.Color(0, 0, 255);
-uint32_t cyan =   strip.Color(255, 0, 255);
+uint32_t red    = strip.Color(0, 255, 0);
+uint32_t green  = strip.Color(255, 0, 0);
+uint32_t blue   = strip.Color(0, 0, 255);
+uint32_t cyan   = strip.Color(255, 0, 255);
+uint32_t off    = strip.Color(0, 0, 0);
 
 void setup() 
 {
@@ -75,9 +76,13 @@ void loop()
   if (_wasTapped)
   {
     Serial.println("Was tapped!");
-    flashRandom(150, 6);
-    //strip.fill(cyan);
-    //strip.show();
+    //flashRandom(150, 6);
+    anim_blink(5, 100, blue, off);
+    //anim_breathe(3, 3000, 0, 0, 255);
+    strip.fill(red);
+    strip.show();
+    delay(1000);
+    anim_blink(1, 250, yellow, red);
     _wasTapped = false;
   }
   
@@ -127,12 +132,47 @@ void flashRandom(int wait, uint8_t count) {
     //uint8_t j = random(strip.numPixels());
     uint8_t j = random(BRIGHTNESS * 2);
     if (j < 1) { j = 1; }
-    strip.setBrightness(j);
+    //strip.setBrightness(j);
     //strip.setPixelColor(j, 0); //turn it off
     strip.show();
     delay(wait);
   }
-  strip.setBrightness(BRIGHTNESS);
+  //strip.setBrightness(BRIGHTNESS);
   Serial.printf("Resetting to brightness of %d\n", BRIGHTNESS);
   strip.show();
+}
+
+// Blink the LEDs between the given colors, count times, with a delay
+void anim_blink(uint8_t count, int wait, uint32_t color, uint32_t secondColor) {
+  Serial.printf("Blinking %d times with %d delay\n", count, wait);
+  for(uint8_t i=0; i<count; i++) {
+    strip.fill(color);
+    strip.show();
+    delay(wait);
+    strip.fill(secondColor);
+    strip.show();
+    delay(wait);
+  }
+}
+
+// Slowly ramp up/down the color as if breathing
+void anim_breathe(uint8_t count, int length, uint8_t red, uint8_t green, uint8_t blue) {
+  Serial.printf("Breathing %d times over %d ms each with color (%d, %d, %d)\n", count, length, red, green, blue);
+  //we want to do this as smoothly as possible so lets change it once per ms
+  
+  int wait = 1; //1ms per step
+  int steps = length / wait; 
+  for (uint8_t j=0; j<count; j++) {
+    //get brighter
+    for (int i=0; i<steps; i++) {
+      float modifier = sin(i * PI/steps);
+      if (modifier <= 0) { modifier = 0; } 
+      uint8_t modRed = red * modifier;
+      uint8_t modGreen = green * modifier;
+      uint8_t modBlue = blue * modifier;
+      strip.fill(strip.Color(modRed, modGreen, modBlue));
+      strip.show();
+      delay(wait);
+    }
+  }
 }
