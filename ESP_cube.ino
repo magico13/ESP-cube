@@ -74,6 +74,7 @@ void loop()
 
   if (_wasTapped)
   {
+    Serial.println("Was tapped!");
     flashRandom(150, 6);
     //strip.fill(cyan);
     //strip.show();
@@ -82,19 +83,20 @@ void loop()
   
   //green, red, blue, white?
   //colorWipe(strip.Color(255,   0,   0), 50); // green
-  //colorWipe(strip.Color(255,   0,   255,  0), 100); //cyan
-  //delay(250);
-  //colorWipe(strip.Color(0,   0,   0,  0), 100);
-  //delay(250);
+  // colorWipe(strip.Color(255,   0,   255,  0), 100); //cyan
+  // delay(250);
+  // colorWipe(strip.Color(0,   0,   0,  0), 100);
+  // delay(250);
   
-  //colorWipe(strip.Color(  0, 255,   0), 50); // Red
-  //colorWipe(strip.Color(  0,   0, 255), 50); // Blue
+  // colorWipe(strip.Color(  0, 255,   0), 50); // Red
+  // colorWipe(strip.Color(  0,   0, 255), 50); // Blue
 }
 
 
 
 void flashLED(int times, int ts)
 {
+  Serial.printf("Flashing %d times with %d delay\n", times, ts);
   for (int i=0; i<times; i++)
   {
     digitalWrite(LED_BUILTIN, HIGH);
@@ -119,15 +121,18 @@ void colorWipe(uint32_t color, int wait) {
 
 void flashRandom(int wait, uint8_t count) {
   //randomly change the brightness of the strip
+  Serial.printf("Flashing %d times with %d delay\n", count, wait);
   for(uint8_t i=0; i<count; i++) {
     // get a random pixel from the list
     //uint8_t j = random(strip.numPixels());
     uint8_t j = random(BRIGHTNESS * 2);
+    if (j < 1) { j = 1; }
     strip.setBrightness(j);
     //strip.setPixelColor(j, 0); //turn it off
     strip.show();
     delay(wait);
   }
   strip.setBrightness(BRIGHTNESS);
+  Serial.printf("Resetting to brightness of %d\n", BRIGHTNESS);
   strip.show();
 }
