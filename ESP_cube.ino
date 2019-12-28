@@ -19,7 +19,7 @@ ESP8266HTTPUpdateServer httpUpdater;
 //neopixels
 #define LED_PIN    2
 #define LED_COUNT 4
-#define BRIGHTNESS 10
+#define BRIGHTNESS 64
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_RGB + NEO_KHZ800);
 
 //Tapping
@@ -78,7 +78,7 @@ void loop()
     Serial.println("Was tapped!");
     //flashRandom(150, 6);
     anim_blink(5, 100, blue, off);
-    //anim_breathe(3, 3000, 0, 0, 255);
+    anim_breathe(3, 3000, 0, 0, 255);
     strip.fill(red);
     strip.show();
     delay(1000);
