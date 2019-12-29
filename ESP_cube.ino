@@ -8,6 +8,8 @@
 #include <ESP8266WebServer.h>     //Local WebServer used to serve the configuration portal
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 
+#include <ArduinoJson.h>          //JSON en/decoding
+
 #include <Adafruit_NeoPixel.h> //neopixel control
 
 //HTTP Server
@@ -38,6 +40,8 @@ uint32_t blue   = strip.Color(0, 0, 255);
 uint32_t cyan   = strip.Color(255, 0, 255);
 uint32_t off    = strip.Color(0, 0, 0);
 
+uint32_t baseColor = red;
+
 void setup() 
 {
   WiFiManager wifiManager;
@@ -50,7 +54,7 @@ void setup()
 
   strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
   strip.setBrightness(BRIGHTNESS); // Set BRIGHTNESS (max = 255)
-  strip.fill(yellow); //set yellow
+  strip.fill(cyan); //set pending color
   strip.show();
 
   //first parameter is name of access point, second is the password
@@ -59,13 +63,14 @@ void setup()
   MDNS.begin(host);
 
   httpUpdater.setup(&httpServer);
+  configure_routing();
   httpServer.begin();
 
   MDNS.addService("http", "tcp", 80);
   Serial.printf("HTTPUpdateServer ready! Open http://%s.local/update in your browser\n", host);
 
-  strip.fill(red);
-  strip.show();
+  anim_blink(2, 100, green, off);
+  reset_base();
 }
 
 void loop() 
@@ -77,31 +82,88 @@ void loop()
   {
     Serial.println("Was tapped!");
     //flashRandom(150, 6);
-    anim_blink(5, 100, blue, off);
-    anim_breathe(3, 3000, 0, 0, 255);
-    strip.fill(red);
-    strip.show();
-    delay(1000);
-    anim_blink(1, 250, yellow, red);
+    anim_blink(2, 100, blue, off);
+    //anim_breathe(3, 3000, 0, 0, 255);
+    // strip.fill(baseColor);
+    // strip.show();
+    // delay(1000);
+    // anim_blink(1, 250, yellow, baseColor);
+    reset_base();
     _wasTapped = false;
   }
-  
-  //green, red, blue, white?
-  //colorWipe(strip.Color(255,   0,   0), 50); // green
-  // colorWipe(strip.Color(255,   0,   255,  0), 100); //cyan
-  // delay(250);
-  // colorWipe(strip.Color(0,   0,   0,  0), 100);
-  // delay(250);
-  
-  // colorWipe(strip.Color(  0, 255,   0), 50); // Red
-  // colorWipe(strip.Color(  0,   0, 255), 50); // Blue
 }
 
+#pragma region REST Server
+void configure_routing() 
+{
+    httpServer.on("/", HTTP_GET, []() 
+    {
+        httpServer.send(200, "text/html",
+            "<a href=\"http://esp-cube.local/color\">http://esp-cube.local/color</a>");
+    });
+    httpServer.on("/color", HTTP_GET, get_color);
+    httpServer.on("/color", HTTP_POST, update_color);
+    httpServer.on("/color", HTTP_PUT, update_color);
+    httpServer.on("/animate", HTTP_POST, animate);
+    httpServer.on("/animate", HTTP_PUT, animate);
+}
 
+void get_color() 
+{
+  DynamicJsonDocument doc(64);
+  doc["color"] = baseColor;
+  String output = ""; 
+  serializeJson(doc, output);
+  httpServer.send(200, "application/json", output);
+}
 
+void update_color() 
+{
+  String body = httpServer.arg("plain");
+  Serial.println(body);
+
+  DynamicJsonDocument doc(64);
+  DeserializationError error = deserializeJson(doc, body);
+
+  if (error) 
+  {
+    httpServer.send(400);
+  }
+  else
+  {
+    uint32_t color = strip.Color(doc["green"], doc["red"], doc["blue"]); //todo: extract and error handle
+    baseColor = color;
+    reset_base();
+    httpServer.send(200);
+  }
+}
+
+void animate()
+{
+  String body = httpServer.arg("plain");
+  Serial.println(body);
+
+  DynamicJsonDocument doc(256);
+  DeserializationError error = deserializeJson(doc, body);
+
+  if (error) 
+  {
+    httpServer.send(400);
+  }
+  else
+  {
+    uint32_t color = strip.Color(doc["green"], doc["red"], doc["blue"]); //todo: extract and error handle
+    baseColor = color;
+    reset_base();
+    httpServer.send(200);
+  }
+}
+#pragma endregion
+
+#pragma region Animations
 void flashLED(int times, int ts)
 {
-  Serial.printf("Flashing %d times with %d delay\n", times, ts);
+  Serial.printf("Flashing LED_BUILTIN %d times with %d delay\n", times, ts);
   for (int i=0; i<times; i++)
   {
     digitalWrite(LED_BUILTIN, HIGH);
@@ -116,18 +178,22 @@ void flashLED(int times, int ts)
 // (as a single 'packed' 32-bit value, which you can get by calling
 // strip.Color(red, green, blue) as shown in the loop() function above),
 // and a delay time (in milliseconds) between pixels.
-void colorWipe(uint32_t color, int wait) {
-  for(int i=0; i<strip.numPixels(); i++) { // For each pixel in strip...
+void colorWipe(uint32_t color, int wait) 
+{
+  for(int i=0; i<strip.numPixels(); i++) 
+  { // For each pixel in strip...
     strip.setPixelColor(i, color);         //  Set pixel's color (in RAM)
     strip.show();                          //  Update strip to match
     delay(wait);                           //  Pause for a moment
   }
 }
 
-void flashRandom(int wait, uint8_t count) {
+void flashRandom(int wait, uint8_t count) 
+{
   //randomly change the brightness of the strip
   Serial.printf("Flashing %d times with %d delay\n", count, wait);
-  for(uint8_t i=0; i<count; i++) {
+  for(uint8_t i=0; i<count; i++) 
+  {
     // get a random pixel from the list
     //uint8_t j = random(strip.numPixels());
     uint8_t j = random(BRIGHTNESS * 2);
@@ -142,10 +208,18 @@ void flashRandom(int wait, uint8_t count) {
   strip.show();
 }
 
+void reset_base()
+{
+  strip.fill(baseColor);
+  strip.show();
+}
+
 // Blink the LEDs between the given colors, count times, with a delay
-void anim_blink(uint8_t count, int wait, uint32_t color, uint32_t secondColor) {
+void anim_blink(uint8_t count, int wait, uint32_t color, uint32_t secondColor) 
+{
   Serial.printf("Blinking %d times with %d delay\n", count, wait);
-  for(uint8_t i=0; i<count; i++) {
+  for(uint8_t i=0; i<count; i++) 
+  {
     strip.fill(color);
     strip.show();
     delay(wait);
@@ -156,15 +230,18 @@ void anim_blink(uint8_t count, int wait, uint32_t color, uint32_t secondColor) {
 }
 
 // Slowly ramp up/down the color as if breathing
-void anim_breathe(uint8_t count, int length, uint8_t red, uint8_t green, uint8_t blue) {
+void anim_breathe(uint8_t count, int length, uint8_t red, uint8_t green, uint8_t blue) 
+{
   Serial.printf("Breathing %d times over %d ms each with color (%d, %d, %d)\n", count, length, red, green, blue);
   //we want to do this as smoothly as possible so lets change it once per ms
   
   int wait = 1; //1ms per step
   int steps = length / wait; 
-  for (uint8_t j=0; j<count; j++) {
+  for (uint8_t j=0; j<count; j++) 
+  {
     //get brighter
-    for (int i=0; i<steps; i++) {
+    for (int i=0; i<steps; i++) 
+    {
       float modifier = sin(i * PI/steps);
       if (modifier <= 0) { modifier = 0; } 
       uint8_t modRed = red * modifier;
@@ -175,4 +252,5 @@ void anim_breathe(uint8_t count, int length, uint8_t red, uint8_t green, uint8_t
       delay(wait);
     }
   }
+  #pragma endregion
 }
