@@ -152,10 +152,46 @@ void animate()
   }
   else
   {
-    uint32_t color = strip.Color(doc["green"], doc["red"], doc["blue"]); //todo: extract and error handle
-    baseColor = color;
+    //switch on the animation type
+    bool success = true;
+    String animType = doc["animation"];
+    if (animType == "blink")
+    {
+      //count, wait, color, secondColor
+      uint8_t count = doc["count"];
+      int wait = doc["wait"];
+      uint8_t red = doc["color"][0];
+      uint8_t green = doc["color"][1];
+      uint8_t blue = doc["color"][2];
+      uint32_t color = strip.Color(green, red, blue);
+      red = doc["color2"][0];
+      green = doc["color2"][1];
+      blue = doc["color2"][2];
+      uint32_t color2 = strip.Color(green, red, blue);
+
+      httpServer.send(200);
+
+      anim_blink(count, wait, color, color2);
+    }
+    else if (animType == "breathe")
+    {
+      //count, length, red, green, blue
+      uint8_t count = doc["count"];
+      int length = doc["length"];
+      uint8_t red = doc["color"][0];
+      uint8_t green = doc["color"][1];
+      uint8_t blue = doc["color"][2];
+
+      httpServer.send(200);
+
+      anim_breathe(count, length, red, green, blue);
+    }
+    else
+    {
+      httpServer.send(400);
+    }
+    
     reset_base();
-    httpServer.send(200);
   }
 }
 #pragma endregion
@@ -247,7 +283,7 @@ void anim_breathe(uint8_t count, int length, uint8_t red, uint8_t green, uint8_t
       uint8_t modRed = red * modifier;
       uint8_t modGreen = green * modifier;
       uint8_t modBlue = blue * modifier;
-      strip.fill(strip.Color(modRed, modGreen, modBlue));
+      strip.fill(strip.Color(modGreen, modRed, modBlue));
       strip.show();
       delay(wait);
     }
