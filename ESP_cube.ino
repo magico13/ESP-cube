@@ -27,6 +27,7 @@ Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_RGB + NEO_KHZ800);
 //Tapping
 #define TAP_IN 0
 bool _wasTapped = false;
+String _tapAction = "{\"animation\": \"breathe\",\"count\": 1,\"length\": 500,\"color\": [0, 0, 255]}";
 
 void ICACHE_RAM_ATTR handleTap() { 
   _wasTapped = true;
@@ -81,14 +82,7 @@ void loop()
   if (_wasTapped)
   {
     Serial.println("Was tapped!");
-    //flashRandom(150, 6);
-    anim_blink(2, 100, blue, off);
-    //anim_breathe(3, 3000, 0, 0, 255);
-    // strip.fill(baseColor);
-    // strip.show();
-    // delay(1000);
-    // anim_blink(1, 250, yellow, baseColor);
-    reset_base();
+    animate_json(_tapAction, false);
     _wasTapped = false;
   }
 }
@@ -101,14 +95,15 @@ void configure_routing()
         httpServer.send(200, "text/html",
             "<a href=\"http://esp-cube.local/color\">http://esp-cube.local/color</a>");
     });
-    httpServer.on("/color", HTTP_GET, get_color);
-    httpServer.on("/color", HTTP_POST, update_color);
-    httpServer.on("/color", HTTP_PUT, update_color);
-    httpServer.on("/animate", HTTP_POST, animate);
-    httpServer.on("/animate", HTTP_PUT, animate);
+    httpServer.on("/color", HTTP_GET, rest_get_color);
+    httpServer.on("/color", HTTP_POST, rest_post_color);
+    httpServer.on("/color", HTTP_PUT, rest_post_color);
+    httpServer.on("/animate", HTTP_POST, rest_post_animate);
+    httpServer.on("/animate", HTTP_PUT, rest_post_animate);
+    httpServer.on("/tap", HTTP_POST, rest_post_tap_action);
 }
 
-void get_color() 
+void rest_get_color() 
 {
   DynamicJsonDocument doc(64);
   doc["color"] = baseColor;
@@ -117,7 +112,7 @@ void get_color()
   httpServer.send(200, "application/json", output);
 }
 
-void update_color() 
+void rest_post_color() 
 {
   String body = httpServer.arg("plain");
   Serial.println(body);
@@ -138,22 +133,42 @@ void update_color()
   }
 }
 
-void animate()
+void rest_post_animate()
 {
   String body = httpServer.arg("plain");
   Serial.println(body);
 
+  animate_json(body, true);
+}
+
+void rest_post_tap_action()
+{
+  String body = httpServer.arg("plain");
+  Serial.println(body);
+
+  //test the action
+  if (animate_json(body, true))
+  {
+    //store the action
+    _tapAction = body;
+  }
+}
+#pragma endregion
+
+#pragma region Animations
+bool animate_json(String json, bool isWeb)
+{
   DynamicJsonDocument doc(256);
-  DeserializationError error = deserializeJson(doc, body);
+  DeserializationError error = deserializeJson(doc, json);
 
   if (error) 
   {
-    httpServer.send(400);
+    if (isWeb) httpServer.send(400);
+    return false;
   }
   else
   {
     //switch on the animation type
-    bool success = true;
     String animType = doc["animation"];
     if (animType == "blink")
     {
@@ -169,7 +184,7 @@ void animate()
       blue = doc["color2"][2];
       uint32_t color2 = strip.Color(green, red, blue);
 
-      httpServer.send(200);
+      if (isWeb) httpServer.send(200);
 
       anim_blink(count, wait, color, color2);
     }
@@ -182,21 +197,21 @@ void animate()
       uint8_t green = doc["color"][1];
       uint8_t blue = doc["color"][2];
 
-      httpServer.send(200);
+      if (isWeb) httpServer.send(200);
 
       anim_breathe(count, length, red, green, blue);
     }
     else
     {
-      httpServer.send(400);
+      if (isWeb) httpServer.send(400);
+      return false;
     }
     
     reset_base();
   }
+  return true;
 }
-#pragma endregion
 
-#pragma region Animations
 void flashLED(int times, int ts)
 {
   Serial.printf("Flashing LED_BUILTIN %d times with %d delay\n", times, ts);
