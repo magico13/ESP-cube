@@ -88,21 +88,26 @@ void loop()
 }
 
 #pragma region REST Server
+//Configure the routes for the REST server
 void configure_routing() 
 {
     httpServer.on("/", HTTP_GET, []() 
     {
-        httpServer.send(200, "text/html",
-            "<a href=\"http://esp-cube.local/color\">http://esp-cube.local/color</a>");
+      String page = "<a href=\"http://esp-cube.local/color\">Current Color</a><br><a href=\"http://esp-cube.local/tap\">Current Tap Action</a><br><a href=\"http://esp-cube.local/update\">OTA Update</a>";
+      httpServer.send(200, "text/html", page);
     });
     httpServer.on("/color", HTTP_GET, rest_get_color);
     httpServer.on("/color", HTTP_POST, rest_post_color);
     httpServer.on("/color", HTTP_PUT, rest_post_color);
+
     httpServer.on("/animate", HTTP_POST, rest_post_animate);
     httpServer.on("/animate", HTTP_PUT, rest_post_animate);
+
+    httpServer.on("/tap", HTTP_GET, rest_get_tap_action);
     httpServer.on("/tap", HTTP_POST, rest_post_tap_action);
 }
 
+//Returns the current color (currently decimal, intending on RGB later)
 void rest_get_color() 
 {
   DynamicJsonDocument doc(64);
@@ -112,6 +117,7 @@ void rest_get_color()
   httpServer.send(200, "application/json", output);
 }
 
+//Sets the base color
 void rest_post_color() 
 {
   String body = httpServer.arg("plain");
@@ -133,6 +139,7 @@ void rest_post_color()
   }
 }
 
+//Triggers an animation
 void rest_post_animate()
 {
   String body = httpServer.arg("plain");
@@ -141,6 +148,13 @@ void rest_post_animate()
   animate_json(body, true);
 }
 
+//Sends the current tap action to the client
+void rest_get_tap_action()
+{
+  httpServer.send(200, "application/json", _tapAction);
+}
+
+//Takes in an animation to use when tapping
 void rest_post_tap_action()
 {
   String body = httpServer.arg("plain");
