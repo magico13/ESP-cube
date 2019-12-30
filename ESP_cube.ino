@@ -87,6 +87,25 @@ void loop()
   }
 }
 
+//Converts a uint32_t (like a strip.Color) to 4 bytes (_GRB)
+void uint32_to_byte_array(uint32_t src, byte* output)
+{
+  //read through the bits, one byte at a time, from most to least significant
+  for (int by=3; by>=0; by--)
+  {
+    output[3-by] = 0;
+    //8 bits in a byte
+    for (int bi=0; bi<8; bi++)
+    {
+      int val = bitRead(src, bi+(8*by));
+      Serial.print(val);
+      output[3-by] += val * pow(2, bi);
+    }
+    Serial.print(" ");
+  }
+  Serial.println();
+}
+
 #pragma region REST Server
 //Configure the routes for the REST server
 void configure_routing() 
@@ -111,7 +130,12 @@ void configure_routing()
 void rest_get_color() 
 {
   DynamicJsonDocument doc(64);
-  doc["color"] = baseColor;
+  byte rgb[4];
+  uint32_to_byte_array(baseColor, rgb);
+  doc["red"] = rgb[2];
+  doc["green"] = rgb[1];
+  doc["blue"] = rgb[3];
+  doc["raw"] = baseColor;
   String output = ""; 
   serializeJson(doc, output);
   httpServer.send(200, "application/json", output);
